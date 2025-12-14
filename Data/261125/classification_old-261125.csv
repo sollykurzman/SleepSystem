@@ -1,0 +1,2 @@
+datetime,classification,in_bed__inBed,in_bed__notInBed,asleep__Asleep,asleep__Awake,state__Core Sleep,state__REM Sleep,state__Deep Sleep
+2025-11-29 01:03:57.880,REM Sleep,1.0,0.0,0.52,0.48,0.36,0.6,0.04
