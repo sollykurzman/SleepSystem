@@ -97,12 +97,29 @@ if __name__ == "__main__":
 
     #keep main thread alive while others run
     try:
-        while True:
+        while datetime.now() < context.until:
+            # Check if critical data threads have died unexpectedly
             if not (store_thread.is_alive() and listener_thread.is_alive()):
+                print("Critical threads stopped unexpectedly.")
                 break
             
             time.sleep(1)
 
+        print("End time reached. Shutting down...")
+
     #exit on Ctrl+C
     except KeyboardInterrupt:
         print("\nCtrl+C received! Stopping...")
+
+    finally:
+        # Graceful Shutdown Sequence
+        print("Cleaning up resources...")
+        
+        # Stop the scheduler loop
+        if hasattr(scheduler.scheduler, 'running'):
+            scheduler.scheduler.running = False
+            
+        # Stop any active hardware (Buzzer/Lights)
+        hardware.hw.stop_all()
+        
+        print("Shutdown complete.")
