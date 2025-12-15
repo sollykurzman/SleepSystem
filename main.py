@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 from datetime import datetime, timedelta, time as dt_time
 from dataclasses import dataclass
 import threading
@@ -9,8 +11,13 @@ import store
 import classifier
 import action
 import db
+import ui
+import scheduler
+import logic
+import hardware
 
-@dataclass#(frozen=True)
+#class used to store context for the night
+@dataclass
 class NightContext:
     cutoff: dt_time
     night_id: str
@@ -20,6 +27,7 @@ class NightContext:
     currently_asleep: bool
     sleep_onset_time: datetime | None
 
+#initiates the context for the current night
 def build_night_context(cutoff):
     now = datetime.now()
     if now.time() < cutoff:
@@ -42,16 +50,23 @@ if __name__ == "__main__":
 
     print(f"Running until {context.until} for night {context.night_id}")
 
+    #initiate database
     db.init_db()
 
+    #start alarm scheduler
+    scheduler.start_scheduler()
+
+    logic.determine_initial_alarm(context)
+
+    #begin data store thread, stores and formats data
     store_thread = threading.Thread(
         target=store.store_worker,
         args=(context.night_id, context.until),
         daemon=True
     )
     store_thread.start()
-    # store.start_workers(context.night_id, context.until)
 
+    #begin listener thread, presents data to the store
     listener_thread = threading.Thread(
         target=listener.listener,
         args=(context.until,),
@@ -59,14 +74,15 @@ if __name__ == "__main__":
     )
     listener_thread.start()
 
+    #begin classifier thread, classifies the formatted data
     classifier_thread = threading.Thread(
         target=classifier.classification_worker,
         args=(context.night_id, context.until),
         daemon=True
     )
     classifier_thread.start()
-    # classifier.start_classifier(context.night_id, context.until)
 
+    #begin action thread, actions the data
     action_thread = threading.Thread(
         target=action.action_loop,
         args=(context,),
@@ -74,8 +90,12 @@ if __name__ == "__main__":
     )
     action_thread.start()
 
+    #begin ui thread, shows real-time data
+    ui.start_ui_thread()
+
     print(f"Running until {context.until}. Press Ctrl+C to stop.")
 
+    #keep main thread alive while others run
     try:
         while True:
             if not (store_thread.is_alive() and listener_thread.is_alive()):
@@ -83,5 +103,6 @@ if __name__ == "__main__":
             
             time.sleep(1)
 
+    #exit on Ctrl+C
     except KeyboardInterrupt:
         print("\nCtrl+C received! Stopping...")

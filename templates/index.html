@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleep System Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #1e1e1e; color: #e0e0e0; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        /* Cards */
+        .card { background: #2d2d2d; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .card h2 { margin-top: 0; font-size: 1.2em; color: #aaa; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        
+        /* Status */
+        .status-box { text-align: center; padding: 10px 0; }
+        .status-text { font-size: 3em; font-weight: bold; color: #4facfe; }
+        .status-sub { color: #888; font-size: 0.9em; }
+
+        /* Alarm Controls */
+        .alarm-info { font-size: 1.5em; color: #ff9500; font-weight: bold; margin-bottom: 15px; }
+        .btn { 
+            padding: 10px 20px; border: none; border-radius: 8px; font-size: 1em; cursor: pointer; color: #fff; margin-right: 10px; transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.8; }
+        .btn-cancel { background: #ff3b30; }
+        .btn-snooze { background: #ff9500; }
+        .btn-set { background: #34c759; }
+        .btn-disabled { background: #555; cursor: not-allowed; color: #aaa; }
+
+        /* Input styling */
+        .time-input {
+            background: #444; color: #fff; border: 1px solid #555; 
+            padding: 10px; border-radius: 8px; font-size: 1.1em; margin-right: 10px;
+        }
+        .time-input::-webkit-calendar-picker-indicator { filter: invert(1); }
+
+        /* Graph */
+        #sleep-graph { width: 100%; height: 500px; }
+
+        /* History Chips */
+        .chip { 
+            background: #444; color: #fff; padding: 5px 10px; border-radius: 15px; 
+            cursor: pointer; margin-right: 5px; display: inline-block; font-size: 0.9em;
+        }
+        .chip:hover { background: #666; }
+        .chip.active { background: #007AFF; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h2 style="border:none; padding:0; margin:0;">NIGHT: <span id="night-id" style="color:#fff;">...</span></h2>
+                <div class="status-sub" id="last-update">Waiting...</div>
+            </div>
+            <div class="status-text" id="current-state">--</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>ALARM CONTROL</h2>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+                <div class="status-sub">Next Alarm</div>
+                <div id="alarm-display" class="alarm-info">--:--</div>
+            </div>
+            <div>
+                <button id="btn-snooze" class="btn btn-snooze" onclick="snoozeAlarm()">Snooze</button>
+                <button id="btn-cancel" class="btn btn-cancel" onclick="cancelAlarm()">Cancel</button>
+            </div>
+        </div>
+
+        <div style="border-top: 1px solid #444; padding-top: 15px; display: flex; align-items: center;">
+            <input type="time" id="new-alarm-time" class="time-input">
+            <button class="btn btn-set" onclick="setAlarm()">Set Alarm</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>SLEEP ANALYSIS</h2>
+        <div id="sleep-graph"></div>
+    </div>
+
+    <div class="card">
+        <h2>HISTORY</h2>
+        <div id="history-list"></div>
+    </div>
+
+</div>
+
+<script>
+    let currentNightId = "current";
+    let graphInitialized = false;
+
+    // define color mapping for sleep states
+    const STATE_COLORS = {
+        'Core Sleep': 'rgba(0, 0, 255, 0.2)',    
+        'Deep Sleep': 'rgba(128, 0, 128, 0.2)',  
+        'REM Sleep':  'rgba(0, 255, 255, 0.2)',  
+        'REM':        'rgba(0, 255, 255, 0.2)',  
+        'Awake':      'rgba(255, 165, 0, 0.2)',  
+        'inBed':      'rgba(128, 128, 128, 0.2)', 
+        'notInBed':   'rgba(50, 50, 50, 0.2)',    
+        'Disturbance':'rgba(255, 0, 0, 0.2)'      
+    };
+
+    // Alarm control functions
+    async function setAlarm() {
+        const timeVal = document.getElementById('new-alarm-time').value;
+        if(!timeVal) {
+            alert("Please select a time first.");
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/alarm/set', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ time: timeVal })
+            });
+            const data = await res.json();
+            
+            if(data.status === "success") {
+                updateStatus(); // Refresh UI immediately
+                document.getElementById('new-alarm-time').value = ""; // Clear input
+            } else {
+                alert("Error setting alarm: " + data.error);
+            }
+        } catch(e) { 
+            console.error(e);
+            alert("Failed to connect to server."); 
+        }
+    }
+
+    async function cancelAlarm() {
+        // confirm user intent before cancellation
+        if(!confirm("Are you sure you want to cancel the alarm?")) return;
+        try {
+            // send cancel request to backend
+            await fetch('/api/alarm/cancel', { method: 'POST' });
+            updateStatus(); 
+        } catch(e) { alert("Error cancelling alarm"); }
+    }
+
+    async function snoozeAlarm() {
+        try {
+            // send snooze request to backend
+            await fetch('/api/alarm/snooze', { method: 'POST' });
+            updateStatus(); 
+        } catch(e) { alert("Error snoozing alarm"); }
+    }
+
+    // Fetch latest classification
+    async function updateStatus() {
+        try {
+            // fetch latest system state
+            const res = await fetch('/api/status');
+            const data = await res.json();
+            
+            // update live display elements
+            if(currentNightId === "current") {
+                document.getElementById('night-id').innerText = data.night_id + " (LIVE)";
+                document.getElementById('current-state').innerText = data.state;
+                document.getElementById('last-update').innerText = data.last_update;
+
+                // update alarm display
+                const alarmEl = document.getElementById('alarm-display');
+                const btnCancel = document.getElementById('btn-cancel');
+                const btnSnooze = document.getElementById('btn-snooze');
+
+                // check if alarm exists and is set
+                if (data.alarm_time && data.alarm_time !== "No Alarm") {
+                    // format alarm time string
+                    const alarmDate = new Date(data.alarm_time);
+                    const timeStr = alarmDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    alarmEl.innerText = timeStr;
+                    
+                    // enable control buttons
+                    btnCancel.classList.remove('btn-disabled');
+                    btnSnooze.classList.remove('btn-disabled');
+                    btnCancel.disabled = false;
+                    btnSnooze.disabled = false;
+                } else {
+                    // indicate alarm is off
+                    alarmEl.innerText = "OFF";
+                    
+                    // disable control buttons
+                    btnCancel.classList.add('btn-disabled');
+                    btnSnooze.classList.add('btn-disabled');
+                    btnCancel.disabled = true;
+                    btnSnooze.disabled = true;
+                }
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    // Load and render sleep graph
+    async function updateGraph() {
+        try {
+            // fetch graph data for selected night
+            const res = await fetch(`/api/graph/${currentNightId}`);
+            const data = await res.json();
+
+            if (data.error) return;
+
+            const traces = [];
+
+            // Predicted blocks
+            const uniqueLabels = [...new Set(data.labels)];
+            
+            uniqueLabels.forEach(label => {
+                if (!STATE_COLORS[label]) return; 
+
+                const x = [];
+                const y = [];
+                let startIndex = -1;
+
+                // helper to add block coordinates
+                const addBlock = (startIdx, endIdx) => {
+                    const tStart = data.timestamps[startIdx];
+                    const tEnd = data.timestamps[endIdx];
+                    x.push(tStart, tStart, tEnd, tEnd, tStart, null);
+                    y.push(0, 1, 1, 0, 0, null);
+                };
+
+                // identify contiguous blocks for this label
+                for(let i=0; i < data.labels.length; i++) {
+                    const isMatch = (data.labels[i] === label);
+                    if (isMatch) {
+                        if (startIndex === -1) startIndex = i;
+                    } else {
+                        if (startIndex !== -1) {
+                            addBlock(startIndex, i);
+                            startIndex = -1;
+                        }
+                    }
+                }
+                // close final block if needed
+                if (startIndex !== -1) {
+                    addBlock(startIndex, data.labels.length - 1);
+                }
+
+                // add block trace to graph
+                traces.push({
+                    x: x, y: y, fill: 'toself', type: 'scatter', mode: 'none',
+                    fillcolor: STATE_COLORS[label], name: `Pred ${label}`, hoverinfo: 'skip', visible: true
+                });
+            });
+
+            // Proability lines
+            for (const [key, vals] of Object.entries(data.probabilities)) {
+                traces.push({
+                    x: data.timestamps, y: vals, mode: 'lines', name: key,
+                    line: { width: 1.5 }, visible: 'legendonly' 
+                });
+            }
+
+            // configure graph layout
+            const layout = {
+                paper_bgcolor: '#2d2d2d',
+                plot_bgcolor: '#2d2d2d',
+                font: { color: '#aaa' },
+                margin: { t: 30, r: 10, l: 40, b: 40 },
+                xaxis: { title: 'Time', showgrid: false },
+                yaxis: { title: 'Probability / State', range: [0, 1.1], showgrid: true, gridcolor: '#444' },
+                hovermode: 'x unified',
+                showlegend: true,
+                legend: { orientation: 'h', y: -0.2 },
+                uirevision: 'true' 
+            };
+
+            // render or update plotly graph
+            if (!graphInitialized) {
+                Plotly.newPlot('sleep-graph', traces, layout);
+                graphInitialized = true;
+            } else {
+                Plotly.react('sleep-graph', traces, layout);
+            }
+
+        } catch(e) { console.error("Graph Error:", e); }
+    }
+
+    // Load historical nights
+    async function loadHistory() {
+        // fetch available history logs
+        const res = await fetch('/api/history');
+        const nights = await res.json();
+        
+        const container = document.getElementById('history-list');
+        container.innerHTML = `<span class="chip active" onclick="switchNight('current')">LIVE</span>`;
+        
+        // render history chips
+        nights.forEach(n => {
+            container.innerHTML += `<span class="chip" onclick="switchNight('${n}')">${n}</span>`;
+        });
+    }
+
+    window.switchNight = function(id) {
+        currentNightId = id;
+        graphInitialized = false; 
+        
+        // update active chip styling
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        event.target.classList.add('active');
+
+        // toggle display mode between live and history
+        if(id !== 'current') {
+            document.getElementById('night-id').innerText = id;
+            document.getElementById('current-state').innerText = "HISTORY";
+            // hide alarm controls for historical data
+            document.getElementById('alarm-display').innerText = "--";
+        }
+        updateGraph();
+    };
+
+    // Loops
+    loadHistory();
+    setInterval(updateStatus, 1000); 
+    setInterval(updateGraph, 2000);  
+    updateGraph(); 
+
+</script>
+
+</body>
+</html>
