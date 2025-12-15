@@ -13,8 +13,8 @@ import action
 import db
 import ui
 import scheduler
-import logic
-import hardware
+import util_logic
+import util_hardware
 
 #class used to store context for the night
 @dataclass
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     #start alarm scheduler
     scheduler.start_scheduler()
 
-    logic.determine_initial_alarm(context)
+    util_logic.determine_initial_alarm(context)
 
     #begin data store thread, stores and formats data
     store_thread = threading.Thread(
@@ -120,6 +120,6 @@ if __name__ == "__main__":
             scheduler.scheduler.running = False
             
         # Stop any active hardware (Buzzer/Lights)
-        hardware.hw.stop_all()
+        util_hardware.hw.stop_all()
         
         print("Shutdown complete.")

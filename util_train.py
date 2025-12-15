@@ -73,11 +73,11 @@ def train_inbed(df, path, evaluate=True, plot_cm=False):
     encoder_filename = path + 'in_bed_encoder.joblib'
 
     # save model and encoder artifacts safely
-    joblib.dump(model, path + "temp_model.joblib")
-    joblib.dump(le, path + "temp_encoder.joblib")
+    # joblib.dump(model, path + "temp_model.joblib")
+    # joblib.dump(le, path + "temp_encoder.joblib")
 
-    os.replace(path + "temp_model.joblib", model_filename)
-    os.replace(path + "temp_encoder.joblib", encoder_filename)
+    # os.replace(path + "temp_model.joblib", model_filename)
+    # os.replace(path + "temp_encoder.joblib", encoder_filename)
 
     # generate predictions on test set
     y_pred = model.predict(X_test)
@@ -184,11 +184,11 @@ def train_asleep(df, path, evaluate=True, plot_cm=False):
     encoder_filename = path + 'asleep_encoder.joblib'
 
     # save model and encoder artifacts
-    joblib.dump(model, path + "temp_model.joblib")
-    joblib.dump(le, path + "temp_encoder.joblib")
+    # joblib.dump(model, path + "temp_model.joblib")
+    # joblib.dump(le, path + "temp_encoder.joblib")
 
-    os.replace(path + "temp_model.joblib", model_filename)
-    os.replace(path + "temp_encoder.joblib", encoder_filename)
+    # os.replace(path + "temp_model.joblib", model_filename)
+    # os.replace(path + "temp_encoder.joblib", encoder_filename)
 
     # generate predictions
     y_pred = model.predict(X_test)
@@ -285,11 +285,11 @@ def train_state(df, path, evaluate=True, plot_cm=False):
     encoder_filename = path + 'state_encoder.joblib'
 
     # save model and encoder artifacts
-    joblib.dump(model, path + "temp_model.joblib")
-    joblib.dump(le, path + "temp_encoder.joblib")
+    # joblib.dump(model, path + "temp_model.joblib")
+    # joblib.dump(le, path + "temp_encoder.joblib")
 
-    os.replace(path + "temp_model.joblib", model_filename)
-    os.replace(path + "temp_encoder.joblib", encoder_filename)
+    # os.replace(path + "temp_model.joblib", model_filename)
+    # os.replace(path + "temp_encoder.joblib", encoder_filename)
 
     # generate predictions
     y_pred = model.predict(X_test)

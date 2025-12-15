@@ -11,7 +11,7 @@ import time
 
 import db
 import scheduler 
-import hardware
+import util_hardware
 
 app = Flask(__name__)
 
@@ -162,13 +162,13 @@ def set_alarm():
 @app.route('/api/alarm/cancel', methods=['POST'])
 def cancel_alarm():
     scheduler.scheduler.cancel_alarm()
-    hardware.hw.stop_all()
+    util_hardware.hw.stop_all()
     return jsonify({"status": "cancelled"})
 
 @app.route('/api/alarm/snooze', methods=['POST'])
 def snooze_alarm():
     # Stop buzzer, reset alarm for +9 mins
-    hardware.hw.stop_all()
+    util_hardware.hw.stop_all()
     new_time = datetime.now() + timedelta(minutes=9)
     scheduler.scheduler.set_alarm(new_time, fade_minutes=0)
     return jsonify({"status": "snoozed", "new_time": new_time})

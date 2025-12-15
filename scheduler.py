@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 import db
-import hardware
+import util_hardware
 
 class RobustScheduler:
     def __init__(self):
@@ -69,7 +69,7 @@ class RobustScheduler:
             db.update_alarm_status(None, active=0)
             
             # stop any active hardware effects
-            hardware.hw.stop_all()
+            util_hardware.hw.stop_all()
             print("SCHEDULER: Alarm cancelled.")
 
     def run(self):
@@ -92,13 +92,13 @@ class RobustScheduler:
                         # calculate remaining duration for fade
                         duration = (self.target_time - now).total_seconds()
                         if duration > 0:
-                            hardware.hw.trigger_fade(duration=duration)
+                            util_hardware.hw.trigger_fade(duration=duration)
                         self.fade_started = True
 
                     # check if alarm should trigger
                     if now >= self.target_time:
                         print("SCHEDULER: Triggering ALARM!")
-                        hardware.hw.trigger_alarm()
+                        util_hardware.hw.trigger_alarm()
                         
                         # update alarm status in database
                         conn = db.get_conn()

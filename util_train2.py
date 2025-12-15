@@ -223,8 +223,8 @@ def main():
     model.fit(X_train, y_train, sample_weight=weights)
 
     # save trained model and feature list
-    joblib.dump(model, 'ML/state_2_model.joblib')
-    joblib.dump(feature_cols, 'ML/state_2_features.joblib')
+    # joblib.dump(model, 'ML/state_2_model.joblib')
+    # joblib.dump(feature_cols, 'ML/state_2_features.joblib')
 
     # evaluate model performance
     y_pred = model.predict(X_test)

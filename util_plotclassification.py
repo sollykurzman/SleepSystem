@@ -182,7 +182,7 @@ if __name__ == "__main__":
         target_file = sys.argv[1]
     else:
         date = '211125'
-        target_file = f'Data/{date}/classification_refined-{date}.csv' 
+        target_file = f'Data/{date}/classification-{date}.csv' 
         if not os.path.exists(target_file):
             print("No file provided and default not found.")
             sys.exit(1)

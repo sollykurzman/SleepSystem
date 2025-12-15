@@ -9,7 +9,7 @@ import pandas as pd
 import classifier
 import db
 import scheduler  
-import logic      
+import util_logic      
 
 # threshold configuration
 ONSET_THRESH = 0.81
@@ -29,7 +29,7 @@ def action_loop(context):
     db.insert_event(context.night_id, "sleep_engine_started")
     
     # set initial alarm based on calendar constraints
-    logic.determine_initial_alarm(context)
+    util_logic.determine_initial_alarm(context)
 
     while True:
         # retrieve next classification result
@@ -46,7 +46,7 @@ def action_loop(context):
         # periodic check for smart alarm adjustments
         if (datetime.now() - LAST_SMART_CHECK).total_seconds() > SMART_ADJUST_WINDOW:
             # analyze recent sleep cycles for optimization
-            logic.run_smart_adjustments(context)
+            util_logic.run_smart_adjustments(context)
             LAST_SMART_CHECK = datetime.now()
 
 def handle_classification(context, ts, label, probabilities):
@@ -183,10 +183,10 @@ def on_sleep_onset(context, ts):
     )
 
     # retrieve calendar constraint
-    hard_limit = logic.get_calendar_limit(context)
+    hard_limit = util_logic.get_calendar_limit(context)
 
     # calculate debt recovery target
-    sleep_debt_hours = logic.calculate_sleep_debt()
+    sleep_debt_hours = util_logic.calculate_sleep_debt()
     ideal_hours = 8.0 + (sleep_debt_hours * 0.5) 
     
     ideal_wake_time = ts + timedelta(hours=ideal_hours)

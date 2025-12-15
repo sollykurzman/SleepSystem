@@ -7,3 +7,6 @@ Data/**/raw_data-*.csv
 .DS_Store
 .lgd-nfy0
 archive/
+*.db
+allscripts.py
+util_inspect_db.py
